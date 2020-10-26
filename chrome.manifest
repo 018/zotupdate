@@ -1,0 +1,6 @@
+content zoterozotupdate chrome/content/
+
+locale  zoterozotupdate  en-US   chrome/locale/en-US/
+locale  zoterozotupdate  zh-CN   chrome/locale/zh-CN/
+
+overlay chrome://zotero/content/zoteroPane.xul chrome://zoterozotupdate/content/overlay.xul

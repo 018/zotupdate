@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE overlay SYSTEM "chrome://zoterozotupdate/locale/overlay.dtd">
+
+<overlay
+    id="zoterozotupdate-overlay"
+    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+    <stringbundleset>
+        <stringbundle
+            id="zoterozotupdate-bundle"
+            src="chrome://zoterozotupdate/locale/zotupdate.properties"/>
+    </stringbundleset>
+
+    <script
+        type="application/x-javascript"
+        src="chrome://zoterozotupdate/content/zotupdate.js"/>
+
+    <popup
+        id="zotero-itemmenu">
+        <menuitem
+            id="zotero-itemmenu-zotupdate"
+            label="&zotero.zotupdate.update.label;"
+            oncommand="Zotero.ZotUpdate.updateInfo()"/>
+    </popup>
+</overlay>
