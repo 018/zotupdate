@@ -1,5 +1,6 @@
 content zoterozotupdate chrome/content/
 
+skin    zoterozotupdate  default chrome/skin/default/
 locale  zoterozotupdate  en-US   chrome/locale/en-US/
 locale  zoterozotupdate  zh-CN   chrome/locale/zh-CN/
 

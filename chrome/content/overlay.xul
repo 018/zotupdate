@@ -17,9 +17,25 @@
 
     <popup
         id="zotero-itemmenu">
-        <menuitem
-            id="zotero-itemmenu-zotupdate"
-            label="&zotero.zotupdate.update.label;"
-            oncommand="Zotero.ZotUpdate.updateInfo()"/>
+        <menu class="menu-iconic" id="zotero-itemmenu-zotupdate" label="&zotero.zotupdate.zotupdate.label;">
+            <menupopup id="zotero-itemmenu-zotupdate-menupopup">
+                <menuitem
+                    id="zotero-itemmenu-zotupdate-update"
+                    label="&zotero.zotupdate.update.label;"
+                    oncommand="Zotero.ZotUpdate.updateInfo()"/>
+                <menuitem
+                    id="zotero-itemmenu-zotupdate-pulldir"
+                    label="&zotero.zotupdate.pulldir.label;"
+                    oncommand="Zotero.ZotUpdate.pullDir()"/>
+                <menuitem
+                    id="zotero-itemmenu-zotupdate-tryread"
+                    label="&zotero.zotupdate.tryread.label;"
+                    oncommand="Zotero.ZotUpdate.tryRead()"/>
+                <menuitem
+                    id="zotero-itemmenu-zotupdate-ebook"
+                    label="&zotero.zotupdate.ebook.label;"
+                    oncommand="Zotero.ZotUpdate.eBook()"/>
+            </menupopup>
+        </menu>
     </popup>
 </overlay>

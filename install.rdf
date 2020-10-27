@@ -12,10 +12,12 @@
         RDF:about="urn:mozilla:install-manifest"
         em:id="zoterozotupdate@018.ai"
         em:name="ZotUpdate"
-        em:version="1.0.0"
+        em:version="1.0.1"
         em:type="2"
+        em:iconURL="chrome://zoterozotupdate/skin/zotupdate.png"
+        em:icon64URL="chrome://zoterozotupdate/skin/zotupdate64.png"
         em:creator="018"
-        em:description="更新书籍的clc及豆瓣评分(如果来源于douban)。注意：选择多条时只能更新豆瓣评分，书籍的clc只能选一条一条更新，因为会被小黑屋。"
+        em:description="1、更新：更新书籍的中图法及豆瓣评分(如果来源于douban)；2：拉目录：(如果来源于douban)拉目录作为笔记。3：下载试读：尝试下载目录、序、试读的正文等。4：下载电子书：尝试下载电子书。"
         em:homepageURL="https://github.com/018/zotupdate"
         em:updateURL="https://raw.githubusercontent.com/018/zotupdate/main/update.rdf">
         <em:type>2</em:type>
