@@ -26,7 +26,12 @@ zotupdate.notifierCallback = {
 }
 
 zotupdate.pullDir = function () {
-  var zitems = window.ZoteroPane.getSelectedItems()
+  var zitems = this.getSelectedItems(['book'])
+  if (!zitems || zitems.length <= 0) {
+    var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_book'))
+    return
+  }
   if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
 
   var pw = new Zotero.ProgressWindow()
@@ -69,7 +74,12 @@ zotupdate.pullDir = function () {
 }
 
 zotupdate.tryRead = function () {
-  var zitems = window.ZoteroPane.getSelectedItems()
+  var zitems = this.getSelectedItems(['book'])
+  if (!zitems || zitems.length <= 0) {
+    var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_book'))
+    return
+  }
   if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
 
   if (zitems.length !== 1) {
@@ -151,7 +161,13 @@ zotupdate.tryRead = function () {
 }
 
 zotupdate.eBook = function () {
-  var zitems = window.ZoteroPane.getSelectedItems()
+  var zitems = this.getSelectedItems(['book'])
+  if (!zitems || zitems.length <= 0) {
+    var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_book'))
+    return
+  }
+
   if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
 
   if (zitems.length !== 1) {
@@ -199,7 +215,7 @@ zotupdate.eBook = function () {
               'contentType': 'application/pdf',
               'title': this.getString('zotupdate.ebook') + '(' + title + ')'
             })
-            pw.addDescription(this.getString('zotupdate.ebook_found', zitem.getField('title'), title))
+            pw.addDescription(this.getString('zotupdate.ebook_found', zitem.getField('title'), txt))
             pw.addDescription(this.getString('zotupdate.click_on_close'))
           } else {
             pw.addDescription(this.getString('zotupdate.no_ebook_found', zitem.getField('title')) + '(1)')
@@ -263,7 +279,12 @@ zotupdate.updateRating = function (zitem, pw, url, promises) {
 }
 
 zotupdate.updateInfo = function () {
-  var zitems = window.ZoteroPane.getSelectedItems()
+  var zitems = this.getSelectedItems(['book'])
+  if (!zitems || zitems.length <= 0) {
+    var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_book'))
+    return
+  }
   if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
 
   var pw = new Zotero.ProgressWindow()
@@ -313,7 +334,7 @@ zotupdate.updateInfo = function () {
             let isbn1 = this.opt(/【ISBN号】.*\n/.exec(tubox)).replace(/【ISBN号】|-|\n/g, '')
             if (isDebug()) Zotero.debug('isbn eqisbn: ' + isbn + ' - ' + isbn1)
             if (this.eqisbn(isbn, isbn1)) {
-              let clc = this.opt(this.opt(/【中图法分类号】.*\n/.exec(tubox)).match(/[a-zA-Z0-9\.]+/))
+              let clc = this.opt(this.opt(/【中图法分类号】.*\n/.exec(tubox)).match(/[a-zA-Z0-9\.;]+/))
               if (clc) {
                 if (isDebug()) Zotero.debug('clc: ' + clc)
                 pw.addLines(this.getString('zotupdate.clc_found', zitem.getField('title'), clc))
@@ -391,6 +412,68 @@ zotupdate.getString = function (name, ...params) {
   } else {
     return this._bundle.GetStringFromName(name)
   }
+}
+
+zotupdate.getSelectedItems = function (itemType) {
+  var zitems = window.ZoteroPane.getSelectedItems()
+  if (!zitems.length) {
+    if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
+    return false
+  }
+
+  if (itemType) {
+    if (!Array.isArray(itemType)) {
+      itemType = [itemType]
+    }
+    var siftedItems = this.siftItems(zitems, itemType)
+    if (isDebug()) Zotero.debug('siftedItems.matched: ' + siftedItems.matched)
+    return siftedItems.matched
+  } else {
+    return zitems
+  }
+}
+
+zotupdate.siftItems = function (itemArray, itemTypeArray) {
+  var matchedItems = []
+  var unmatchedItems = []
+  while (itemArray.length > 0) {
+    if (this.checkItemType(itemArray[0], itemTypeArray)) {
+      matchedItems.push(itemArray.shift())
+    } else {
+      unmatchedItems.push(itemArray.shift())
+    }
+  }
+
+  return {
+    matched: matchedItems,
+    unmatched: unmatchedItems
+  }
+}
+
+zotupdate.checkItemType = function (itemObj, itemTypeArray) {
+  var matchBool = false
+
+  for (var idx = 0; idx < itemTypeArray.length; idx++) {
+    switch (itemTypeArray[idx]) {
+      case 'attachment':
+        matchBool = itemObj.isAttachment()
+        break
+      case 'note':
+        matchBool = itemObj.isNote()
+        break
+      case 'regular':
+        matchBool = itemObj.isRegularItem()
+        break
+      default:
+        matchBool = Zotero.ItemTypes.getName(itemObj.itemTypeID) === itemTypeArray[idx]
+    }
+
+    if (matchBool) {
+      break
+    }
+  }
+
+  return matchBool
 }
 
 if (typeof window !== 'undefined') {
