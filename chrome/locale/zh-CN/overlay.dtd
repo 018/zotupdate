@@ -1,5 +1,6 @@
 <!ENTITY zotero.zotupdate.zotupdate.label "ZotUpdate">
 <!ENTITY zotero.zotupdate.update.label "更新">
+<!ENTITY zotero.zotupdate.clearup.label "整理">
 <!ENTITY zotero.zotupdate.pulldir.label "拉目录">
 <!ENTITY zotero.zotupdate.tryread.label "下载试读">
 <!ENTITY zotero.zotupdate.ebook.label "下载电子书">

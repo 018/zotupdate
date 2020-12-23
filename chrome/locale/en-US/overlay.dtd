@@ -1,5 +1,6 @@
 <!ENTITY zotero.zotupdate.zotupdate.label "ZotUpdate">
 <!ENTITY zotero.zotupdate.update.label "Update">
+<!ENTITY zotero.zotupdate.clearup.label "clear up">
 <!ENTITY zotero.zotupdate.pulldir.label "Pull directory">
 <!ENTITY zotero.zotupdate.tryread.label "Trying to read">
 <!ENTITY zotero.zotupdate.ebook.label "Download e-book">

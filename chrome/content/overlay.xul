@@ -24,6 +24,10 @@
                     label="&zotero.zotupdate.update.label;"
                     oncommand="Zotero.ZotUpdate.updateInfo()"/>
                 <menuitem
+                    id="zotero-itemmenu-zotupdate-clearup"
+                    label="&zotero.zotupdate.clearup.label;"
+                    oncommand="Zotero.ZotUpdate.clearup()"/>
+                <menuitem
                     id="zotero-itemmenu-zotupdate-pulldir"
                     label="&zotero.zotupdate.pulldir.label;"
                     oncommand="Zotero.ZotUpdate.pullDir()"/>

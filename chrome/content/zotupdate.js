@@ -45,7 +45,7 @@ zotupdate.pullDir = function () {
     var url = zitem.getField('url')
 
     let id = this.getIDFromURL(url)
-    promises.push(Zotero.HTTP.processDocuments(url, function (doc) {
+    promises.push(Zotero.HTTP.processDocuments(url, async function (doc) {
       var e = doc.querySelector('#dir_' + id + '_full')
       if (e) {
         var dir = e.textContent
@@ -54,7 +54,9 @@ zotupdate.pullDir = function () {
           var item = new Zotero.Item('note')
           item.setNote('<p><strong>目录</strong></p>\n<p>' + dir + '</p>')
           item.parentKey = zitem.getField('key')
-          item.saveTx()
+          var itemID = await item.saveTx()
+          if (isDebug()) Zotero.debug('item.id: ' + itemID)
+          ZoteroPane.selectItem(itemID)
           pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')))
         } else {
           pw.addLines(this.getString('zotupdate.no_dir_found', zitem.getField('title')))
@@ -367,6 +369,53 @@ zotupdate.updateInfo = function () {
   })
 }
 
+zotupdate.clearup = function() {
+  var zitems = this.getSelectedItems(['book'])
+  if (!zitems || zitems.length <= 0) {
+    var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_book'))
+    return
+  }
+  if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
+  var pw = new Zotero.ProgressWindow()
+  pw.changeHeadline(this.getString('zotupdate.title.clearup'))
+  pw.addDescription(this.getString('zotupdate.choose', zitems.length))
+  pw.show()
+  if (isDebug()) Zotero.debug(pw)
+
+  for (const zitem of zitems) {
+    Zotero.debug(zitem)
+
+    var title = zitem.getField('title') || ''
+    var _title = title.replace(/[\(|（](.*?)[\)|）]/g, '($1)')
+    Zotero.debug(_title + ' >>> ' + title)
+    zitem.setField('title', _title)
+    if (title !== _title) {
+      pw.addLines(title + ' >>> ' + _title, title)
+    }
+
+    var abstractNote = (zitem.getField('abstractNote') || '').replace(/•/g, '·')
+    zitem.setField('abstractNote', abstractNote)
+
+    var creators = zitem.getCreators()
+    if (creators) {
+      for (const creator of creators) {
+        Zotero.debug('creator: ' + JSON.stringify(creator))
+        let lastName = (creator.lastName || '').replace(/ /g, '')
+          .replace(/[\(|（|\[|【|［|〔](.{1,2})[\)|）|\]|】|］|〕]/g, '[$1]')
+          .replace(/[\(|（](.*?)[\)|）]/g, '($1)')
+          .replace(/•/g, '·')
+        if (creator.lastName !== lastName) {
+          pw.addLines(creator.lastName + ' >>> ' + lastName, zitem.getField('title'))
+        }
+        creator.lastName = lastName
+      }
+    }
+    zitem.setCreators(creators)
+    zitem.saveTx()
+  }
+}
+
 zotupdate.getIDFromURL = function (url) {
   if (!url) return ''
 
@@ -485,6 +534,7 @@ if (typeof window !== 'undefined') {
   if (!window.Zotero.ZotUpdate) window.Zotero.ZotUpdate = {}
   // note sure about any of this
   window.Zotero.ZotUpdate.updateInfo = function () { zotupdate.updateInfo() }
+  window.Zotero.ZotUpdate.clearup = function () { zotupdate.clearup() }
   window.Zotero.ZotUpdate.pullDir = function () { zotupdate.pullDir() }
   window.Zotero.ZotUpdate.tryRead = function () { zotupdate.tryRead() }
   window.Zotero.ZotUpdate.eBook = function () { zotupdate.eBook() }
