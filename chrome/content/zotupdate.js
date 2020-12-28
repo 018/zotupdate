@@ -51,8 +51,9 @@ zotupdate.pullDir = function () {
         var dir = e.textContent
         if (dir) {
           dir = dir.replace(/(([\xA0\s]*)\n([\xA0\s]*))+/g, '<br>').replace('· · · · · ·     (收起)', '')
+          var img = doc.querySelector('.nbg').href
           var item = new Zotero.Item('note')
-          item.setNote('<p><strong>目录</strong></p>\n<p>' + dir + '</p>')
+          item.setNote('<p><strong>目录</strong></p>\n<p><img src="' + img + '" alt="" width="90" height="130" /></p><p>' + dir + '</p>')
           item.parentKey = zitem.getField('key')
           var itemID = await item.saveTx()
           if (isDebug()) Zotero.debug('item.id: ' + itemID)
@@ -401,10 +402,30 @@ zotupdate.clearup = function() {
     if (creators) {
       for (const creator of creators) {
         Zotero.debug('creator: ' + JSON.stringify(creator))
-        let lastName = (creator.lastName || '').replace(/ /g, '')
-          .replace(/[\(|（|\[|【|［|〔](.{1,2})[\)|）|\]|】|］|〕]/g, '[$1]')
+        //let lastName = (creator.lastName || '')
+        //  .replace(/[\(|（|\[|【|［|〔](.{1,3})[\)|）|\]|】|］|〕]/g, '[$1]')
+        //  .replace(/[\(|（](.*?)[\)|）]/g, '($1)')
+        //  .replace(/•|・|▪/g, '·')
+        //  .replace(/\] +/g, ']')
+        //  .replace(/ *· */g, '·')
+        //  .replace(/ +([^A-Z])/g, '$1')
+        //  .replace(/．/g, '.')
+        //  .replace(/(.*)\[(.*)\]/g, '[$2]$1')
+        let lastName = (creator.lastName || '')
+          .replace(/ 著|译|等|校/g, '')
+          .replace(/翻译/g, '')
+          .replace(/译校/g, '')
+          .replace(/编译/g, '')
+          .replace(/正校/g, '')
+          .replace(/[\(|（|\[|【|［|〔](.{1,3})[\)|）|\]|】|］|〕]/g, '')
           .replace(/[\(|（](.*?)[\)|）]/g, '($1)')
-          .replace(/•/g, '·')
+          .replace(/•|・|▪/g, '·')
+          .replace(/\] +/g, ']')
+          .replace(/ *· */g, '·')
+          .replace(/ +([^A-Z])/g, '$1')
+          .replace(/．/g, '.')
+          .replace(/\. */g, '.')
+          .replace(/(.*)\[(.*)\]/g, '[$2]$1')
         if (creator.lastName !== lastName) {
           pw.addLines(creator.lastName + ' >>> ' + lastName, zitem.getField('title'))
         }
@@ -414,6 +435,7 @@ zotupdate.clearup = function() {
     zitem.setCreators(creators)
     zitem.saveTx()
   }
+  pw.addDescription(this.getString('zotupdate.click_on_close'))
 }
 
 zotupdate.getIDFromURL = function (url) {
