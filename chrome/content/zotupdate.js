@@ -29,7 +29,7 @@ zotupdate.pullDir = function () {
   var zitems = this.getSelectedItems(['book'])
   if (!zitems || zitems.length <= 0) {
     var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
-    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_book'))
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.nonsupport'))
     return
   }
   if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
@@ -80,7 +80,7 @@ zotupdate.tryRead = function () {
   var zitems = this.getSelectedItems(['book'])
   if (!zitems || zitems.length <= 0) {
     var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
-    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_book'))
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.nonsupport'))
     return
   }
   if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
@@ -167,7 +167,7 @@ zotupdate.eBook = function () {
   var zitems = this.getSelectedItems(['book'])
   if (!zitems || zitems.length <= 0) {
     var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
-    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_book'))
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.nonsupport'))
     return
   }
 
@@ -258,8 +258,24 @@ zotupdate.updateRating = function (zitem, pw, url, promises) {
         if (isDebug()) Zotero.debug('no target: ' + doc.body.innerHTML)
       }
     }.bind(this)))
+  } else if (url.includes('cnki.net')) {
+    var dbcode = url.match(/[?&]dbcode=([^&#]*)/i)
+    var filename = url.match(/[?&]filename=([^&#]*)/i)
+    let url0 = 'https://kns.cnki.net/kcms/detail/block/refcount.aspx?dbcode=' + dbcode[1].replace(/\d*/g, '') + '&filename=' + filename[1]
+    promises.push(Zotero.HTTP.doGet(url0, function (res) {
+      if (res.status === 200) {
+        Zotero.debug(res.responseText.replace(/'/g, '"'))
+        var json = JSON.parse(res.responseText.replace(/'/g, '"'))
+        pw.addLines(this.getString('zotupdate.quote_found', zitem.getField('title'), json.CITING))
+        zitem.setField('extra', json.CITING)
+        zitem.saveTx()
+      } else {
+        pw.addLines(this.getString('zotupdate.no_quote_found', zitem.getField('title')) + '(2)')
+        if (isDebug()) Zotero.debug('no target: ' + doc.body.innerHTML)
+      }
+    }.bind(this)))
   } else {
-    pw.addLines(this.getString('zotupdate.no_score_found', zitem.getField('title')) + '(3)')
+    pw.addLines(this.getString('zotupdate.no_quote_found', zitem.getField('title')) + '(3)')
 
     /*var isbn = zitem.getField('ISBN').replace(/-/g, '')
     if (!isbn) {
@@ -282,10 +298,10 @@ zotupdate.updateRating = function (zitem, pw, url, promises) {
 }
 
 zotupdate.updateInfo = function () {
-  var zitems = this.getSelectedItems(['book'])
+  var zitems = this.getSelectedItems(['book', 'journalArticle', 'thesis'])
   if (!zitems || zitems.length <= 0) {
     var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
-    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_book'))
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.nonsupport'))
     return
   }
   if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
@@ -374,7 +390,7 @@ zotupdate.clearup = function() {
   var zitems = this.getSelectedItems(['book'])
   if (!zitems || zitems.length <= 0) {
     var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
-    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_book'))
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.nonsupport'))
     return
   }
   if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
