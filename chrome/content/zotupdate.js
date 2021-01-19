@@ -55,6 +55,7 @@ zotupdate.pullDir = function () {
           var item = new Zotero.Item('note')
           item.setNote('<p><strong>目录</strong></p>\n<p><img src="' + img + '" alt="" width="90" height="130" /></p><p>' + dir + '</p>')
           item.parentKey = zitem.getField('key')
+          item.libraryID = window.ZoteroPane.getSelectedLibraryID()
           var itemID = await item.saveTx()
           if (isDebug()) Zotero.debug('item.id: ' + itemID)
           ZoteroPane.selectItem(itemID)
