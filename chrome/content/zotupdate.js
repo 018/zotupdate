@@ -46,25 +46,22 @@ zotupdate.pullDir = function () {
 
     let id = this.getIDFromURL(url)
     promises.push(Zotero.HTTP.processDocuments(url, async function (doc) {
+      var found = false
       var e = doc.querySelector('#dir_' + id + '_full')
       if (e) {
         var dir = e.textContent
         if (dir) {
-          dir = dir.replace(/(([\xA0\s]*)\n([\xA0\s]*))+/g, '<br>').replace('· · · · · ·     (收起)', '')
+          dir = dir.replace('· · · · · ·     (收起)', '')
           var img = doc.querySelector('.nbg').href
-          var item = new Zotero.Item('note')
-          item.setNote('<p><strong>目录</strong></p>\n<p><img src="' + img + '" alt="" width="90" height="130" /></p><p>' + dir + '</p>')
-          item.parentKey = zitem.getField('key')
-          item.libraryID = window.ZoteroPane.getSelectedLibraryID()
-          var itemID = await item.saveTx()
-          if (isDebug()) Zotero.debug('item.id: ' + itemID)
-          ZoteroPane.selectItem(itemID)
+          this.newDir(window.ZoteroPane.getSelectedLibraryID(), zitem.getField('key'), img, dir)
+          found = true
           pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')))
-        } else {
-          pw.addLines(this.getString('zotupdate.no_dir_found', zitem.getField('title')))
         }
-      } else {
-        pw.addLines(this.getString('zotupdate.no_dir_found', zitem.getField('title')))
+      }
+
+      if (!found) {
+        var isbn = zitem.getField('ISBN').replace(/-/g, '')
+        this.pullDirByJD(isbn, zitem, pw, promises)
       }
     }.bind(this)))
   }
@@ -75,6 +72,182 @@ zotupdate.pullDir = function () {
     pw.addLines(error)
     pw.addDescription(this.getString('zotupdate.click_on_close'))
   })
+}
+
+zotupdate.pullDirByJD = function (isbn, zitem, pw, promises) {
+  promises.push(Zotero.HTTP.processDocuments('https://search.jd.com/Search?keyword=' + isbn, async function (doc1) {
+    var lis = doc1.querySelectorAll('#J_goodsList ul li.gl-item')
+    if (lis.length === 0) {
+      this.pullDirByDangDang(isbn, zitem, pw, promises)
+    } else {
+      var hasJD = false
+      for (var li of lis) {
+        var icons = li.querySelector('.p-icons').innerText
+        hasJD = icons.includes('自营')
+        if (hasJD) {
+          var img = 'https:' + li.querySelector('.p-img img').dataset.lazyImg
+          if (isDebug()) Zotero.debug('img: ' + img)
+
+          var showdesc = function(json) {
+            var parser = new DOMParser()
+            var xml = parser.parseFromString(json.content, 'text/html')
+            var content = xml.querySelector('[text="目录"] .book-detail-content')
+            if (content) {
+              var dir = content.innerText
+              this.newDir(window.ZoteroPane.getSelectedLibraryID(), zitem.getField('key'), img, dir)
+              pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')) + '(JD)')
+            } else {
+              this.pullDirByDangDang(isbn, zitem, pw, promises)
+            }
+          }.bind(this)
+
+          var sku = li.dataset.sku
+          promises.push(Zotero.HTTP.doGet('https://dx.3.cn/desc/' + sku + '?encode=utf-8', async function (doc2) {
+            if (doc2.responseText.length > 0) {
+              eval(doc2.responseText)
+            } else {
+              this.pullDirByDangDang(isbn, zitem, pw, promises)
+            }
+          }.bind(this)))
+
+          break
+        }
+      }
+
+      if (!hasJD) {
+        this.pullDirByDangDang(isbn, zitem, pw, promises)
+      }
+    }
+  }.bind(this)))
+}
+
+zotupdate.pullDirByDangDang = function (isbn, zitem, pw, promises) {
+  promises.push(Zotero.HTTP.processDocuments('http://search.dangdang.com/?key=' + isbn + '&act=input&filter=0%7C0%7C0%7C0%7C0%7C1%7C0%7C0%7C0%7C0%7C0%7C0%7C0%7C0%7C0#J_tab', async function (doc1) {
+    var lis = doc1.querySelectorAll('#search_nature_rg ul li')
+    if (lis.length === 0) {
+      pw.addLines(this.getString('zotupdate.no_dir_found', zitem.getField('title')))
+    } else {
+      for (var li of lis) {
+        var href = li.querySelector('a.pic').href
+        var img = li.querySelector('a.pic img').src
+        if (isDebug()) Zotero.debug('img: ' + img)
+
+        promises.push(Zotero.HTTP.processDocuments(href, async function (doc2) {
+          var element = Object.values(doc2.scripts).find(element => element.textContent.includes('prodSpuInfo'))
+          if (element) {
+            var pattern = /var prodSpuInfo = {.+}/
+            if (pattern.test(element.textContent)) {
+              eval(pattern.exec(element.textContent)[0]);
+              if (prodSpuInfo) {
+                var productId = prodSpuInfo.productId
+                var categoryPath = prodSpuInfo.categoryPath
+                var describeMap = prodSpuInfo.describeMap
+                var template = prodSpuInfo.template
+                var shopId = prodSpuInfo.shopId
+                var url0 = 'http://product.dangdang.com/index.php?r=callback%2Fdetail&productId=' + productId +
+                  '&templateType=' + template + '&describeMap=' + describeMap + '&shopId=' + shopId + '&categoryPath=' + categoryPath
+
+                promises.push(Zotero.HTTP.doGet(url0, async function (doc3) {
+                  if (doc3.responseText.length > 0) {
+                    if (isDebug()) Zotero.debug('doc3.responseText: ' + doc3.responseText)
+                    var parser = new DOMParser()
+                    var xml = parser.parseFromString(JSON.parse(doc3.responseText).data.html, 'text/html')
+                    var content = xml.querySelector('#catalog-textarea')
+                    if (content) {
+                      var dir = content.innerText
+                      dir += '<p><a href="' + href + '">点击查看全部</a></p>'
+                      if (isDebug()) Zotero.debug('dir: ' + dir)
+                      this.newDir(window.ZoteroPane.getSelectedLibraryID(), zitem.getField('key'), img, dir)
+                      pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')) + '(DangDang)')
+                    } else {
+                      pw.addLines(this.getString('zotupdate.no_dir_found', zitem.getField('title')))
+                    }
+                  } else {
+                    pw.addLines(this.getString('zotupdate.no_dir_found', zitem.getField('title')))
+                  }
+                }.bind(this)))
+              } else {
+                pw.addLines(this.getString('zotupdate.no_dir_found', zitem.getField('title')))
+              }
+            } else {
+              pw.addLines(this.getString('zotupdate.no_dir_found', zitem.getField('title')))
+            }
+          } else {
+            pw.addLines(this.getString('zotupdate.no_dir_found', zitem.getField('title')))
+          }
+        }.bind(this)))
+
+        break
+      }
+    }
+  }.bind(this)))
+}
+
+zotupdate.newDir = async function(libraryID, parentKey, img, dir) {
+  var item = new Zotero.Item('note')
+  item.setNote('<p><strong>目录</strong></p>\n<p><img src="' + img + '" alt="" style="max-width: 135px; max-height: 200px;" /></p><p>' + dir.replace(/(([\xA0\s]*)\n([\xA0\s]*))+/g, '<br>') + '</p>')
+  item.parentKey = parentKey
+  item.libraryID = libraryID
+  var itemID = await item.saveTx()
+  if (isDebug()) Zotero.debug('item.id: ' + itemID)
+  ZoteroPane.selectItem(itemID)
+}
+
+// 词频，没用。
+zotupdate.wordfrequency = function () {
+  var zitems = this.getSelectedItems(['note'])
+  if (!zitems || zitems.length <= 0) {
+    var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
+    ps.alert(window, this.getString('zotcard.warning'), this.getString('zotcard.only_note'))
+    return
+  }
+
+  var notes = ''
+  zitems.forEach(zitem => {
+    notes += zitem.getNote() + '/n'
+  })
+  notes = notes.replace(/<[^>]*>/g, ' ').replace(/第.{1,3}章|部分|节/g, '\n')
+  let headers = {
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'Connection': 'keep-alive',
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4229.0 Safari/537.36',
+    'Origin': 'https://ct.istic.ac.cn',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Dest': 'empty',
+    'Referer': 'https://ct.istic.ac.cn/site/term/participle',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Cookie': 'name=value'
+  }
+  var pw = new Zotero.ProgressWindow()
+  pw.changeHeadline(this.getString('zotupdate.title.wordfrequency'))
+  pw.addDescription(this.getString('zotupdate.choose', zitems.length))
+  pw.show()
+  Zotero.HTTP.doPost('https://ct.istic.ac.cn/site/term/ceshihjson', 'id=lyb018' + new Date().getTime() + '&inputText=' + encodeURIComponent(notes), function (responseDetail) {
+    if (responseDetail.status === 200) {
+      var json = JSON.parse(responseDetail.responseText)
+      if (json && json.t1 && json.t1.length > 0) {
+        // 最多取10个
+        let keys = []
+        json.t1.sort(function (a, b) {
+          return b.frequency - a.frequency
+        })
+        for (let i = 0; i < json.t1.length; i++) {
+          let work = json.t1[i].word.trim()
+          if (work.length === 0 || ['第', '部分', '章', '●', 'Chapter', '-', '#', '附录'].includes(work)) continue
+          keys.push('<span style="color:#EB9108">' + json.t1[i].word + '(' + json.t1[i].frequency + ')' + '</span>')
+
+          if (keys.length >= 10) break
+        }
+
+        pw.addDescription(keys.join(', '))
+      }
+    } else {
+      pw.addDescription(responseDetail.status + ' - ' + responseDetail.statusText)
+    }
+  }, headers)
 }
 
 zotupdate.tryRead = function () {
@@ -573,6 +746,7 @@ if (typeof window !== 'undefined') {
   if (!window.Zotero.ZotUpdate) window.Zotero.ZotUpdate = {}
   // note sure about any of this
   window.Zotero.ZotUpdate.updateInfo = function () { zotupdate.updateInfo() }
+  window.Zotero.ZotUpdate.wordfrequency = function () { zotupdate.wordfrequency() }
   window.Zotero.ZotUpdate.clearup = function () { zotupdate.clearup() }
   window.Zotero.ZotUpdate.pullDir = function () { zotupdate.pullDir() }
   window.Zotero.ZotUpdate.tryRead = function () { zotupdate.tryRead() }
