@@ -3,5 +3,6 @@
 <!ENTITY zotero.zotupdate.wordfrequency.label "Word Frequency">
 <!ENTITY zotero.zotupdate.clearup.label "Clear up">
 <!ENTITY zotero.zotupdate.pulldir.label "Pull directory">
+<!ENTITY zotero.zotupdate.weread.label "Weread">
 <!ENTITY zotero.zotupdate.tryread.label "Trying to read">
 <!ENTITY zotero.zotupdate.ebook.label "Download e-book">

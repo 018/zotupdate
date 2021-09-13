@@ -1,3 +1,5 @@
+Services.scriptloader.loadSubScript('chrome://zoterozotupdate/content/utils.js')
+
 let zotupdate = {
   _bundle: Cc['@mozilla.org/intl/stringbundle;1'].getService(Components.interfaces.nsIStringBundleService).createBundle('chrome://zoterozotupdate/locale/zotupdate.properties')
 }
@@ -75,7 +77,7 @@ zotupdate.pullDir = function () {
 }
 
 zotupdate.pullDirByJD = function (isbn, zitem, pw, promises) {
-  promises.push(Zotero.HTTP.processDocuments('https://search.jd.com/Search?keyword=' + isbn, async function (doc1) {
+  promises.push(Zotero.HTTP.processDocuments('https://search.jd.com/Search?keyword=' + isbn + '&shop=1&click=1', async function (doc1) {
     var lis = doc1.querySelectorAll('#J_goodsList ul li.gl-item')
     if (lis.length === 0) {
       this.pullDirByDangDang(isbn, zitem, pw, promises)
@@ -93,7 +95,7 @@ zotupdate.pullDirByJD = function (isbn, zitem, pw, promises) {
             var xml = parser.parseFromString(json.content, 'text/html')
             var content = xml.querySelector('[text="目录"] .book-detail-content')
             if (content) {
-              var dir = content.innerText
+              var dir = content.innerHTML
               this.newDir(window.ZoteroPane.getSelectedLibraryID(), zitem.getField('key'), img, dir)
               pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')) + '(JD)')
             } else {
@@ -184,8 +186,9 @@ zotupdate.pullDirByDangDang = function (isbn, zitem, pw, promises) {
 }
 
 zotupdate.newDir = async function(libraryID, parentKey, img, dir) {
+  if (isDebug()) Zotero.debug('dir: ' + dir)
   var item = new Zotero.Item('note')
-  item.setNote('<p><strong>目录</strong></p>\n<p><img src="' + img + '" alt="" style="max-width: 135px; max-height: 200px;" /></p><p>' + dir.replace(/(([\xA0\s]*)\n([\xA0\s]*))+/g, '<br>') + '</p>')
+  item.setNote('<p><strong>目录</strong></p>\n<p><img src="' + img + '" alt="" style="max-width: 135px; max-height: 200px;" /></p><p>' + dir.replace(/(([\xA0\s]*)\n([\xA0\s]*))+/g, '<br>').replace(/\n+/g, '<br>') + '</p>')
   item.parentKey = parentKey
   item.libraryID = libraryID
   var itemID = await item.saveTx()
@@ -623,9 +626,111 @@ zotupdate.clearup = function() {
       }
     }
     zitem.setCreators(creators)
+    let extra = zitem.getField('extra')
+    if (extra && extra.startsWith('Translators: _:n') && extra.includes('\n')) {
+      zitem.setField('extra', extra.split('\n')[1])
+    }
     zitem.saveTx()
   }
   pw.addDescription(this.getString('zotupdate.click_on_close'))
+}
+
+zotupdate.weread = function () {
+  var zitems = this.getSelectedItems(['book'])
+  if (!zitems || zitems.length <= 0) {
+    var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.nonsupport'))
+    return
+  }
+  if (isDebug()) Zotero.debug('zitems.length: ' + zitems.length)
+
+  if (zitems.length !== 1) {
+    var ps = Components.classes['@mozilla.org/embedcomp/prompt-service;1'].getService(Components.interfaces.nsIPromptService)
+    ps.alert(window, this.getString('zotupdate.warning'), this.getString('zotupdate.only_one'))
+    return
+  }
+
+  // 只支持一个，不然容易小黑屋。
+  var zitem = zitems[0]
+
+  var pw = new Zotero.ProgressWindow()
+  pw.changeHeadline('附加微信读书链接')
+  pw.show()
+
+  Zotero.HTTP.doGet('https://weread.qq.com/web/search/global?keyword=' + zitem.getField('title') + '&maxIdx=0&fragmentSize=120&count=40', async function (request) {
+    if (request.status === 200 || request.status === 201) {
+      let res = JSON.parse(request.responseText)
+      if (res.books && res.books.length > 0) {
+        let bookId
+        for (let index = 0; index < res.books.length; index++) {
+          const book = res.books[index]
+
+          var creators = zitem.getCreators()
+          if (creators) {
+            for (const creator of creators) {
+              if (creator.lastName === book.bookInfo.author) {
+                bookId = book.bookInfo.bookId
+                break
+              }
+            }
+          }
+
+          if (bookId) {
+            break
+          }
+        }
+
+        if (bookId) {
+          let urlid = this.createId(bookId)
+          let url = `https://weread.qq.com/web/reader/${urlid}`
+          Zotero.Attachments.linkFromURL({
+            title: `微信读书《${zitem.getField('title')}》`,
+            linkMode: 'linked_url',
+            parentItemID: zitem.id,
+            url: url
+          })
+          Zotero.debug(`找到微信读书: ${url}`)
+          pw.addLines(`${zitem.getField('title')} 找到微信读书。`, `chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
+        } else {
+          pw.addLines(`${zitem.getField('title')} 未找到微信读书。`, `chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+        }
+      } else {
+        pw.addLines(`${zitem.getField('title')} 未找到微信读书。`, `chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+      }
+    } else if (request.status === 0) {
+      pw.addLines(`${zitem.getField('title')} 出错 - 网络错误。`, `chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+    } else {
+      pw.addLines(`${zitem.getField('title')} 出错，${request.status} - ${request.statusText}`, `chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+    }
+  }.bind(this))
+}
+
+zotupdate.createId = function (bookId) {
+  let str = Zotero.Utilities.Internal.md5(bookId, false)
+  let strSub = str.substr(0, 3)
+
+  let func = function (id) {
+    if (/^\d*$/.test(id)) {
+      for (var len = id['length'], c = [], a = 0; a < len; a += 9) {
+        var b = id['slice'](a, Math.min(a + 9, len))
+        c['push'](parseInt(b)['toString'](16))
+      }
+      return ['3', c]
+    }
+    for (var d = '', i = 0; i < id['length']; i++) {
+      d += id['charCodeAt'](i)['toString'](16)
+    }
+    return ['4', [d]]
+  }
+
+  let fa = func(bookId)
+  strSub += fa[0],
+  strSub += 2 + str['substr'](str['length'] - 2, 2)
+  for (var m = fa[1], j = 0; j < m.length; j++) {
+    var n = m[j].length.toString(16)
+    1 === n['length'] && (n = '0' + n), strSub += n, strSub += m[j], j < m['length'] - 1 && (strSub += 'g')
+  }
+  return strSub.length< 20 && (strSub += str.substr(0, 20 - strSub.length)), strSub += Zotero.Utilities.Internal.md5(strSub, false).substr(0, 3)
 }
 
 zotupdate.getIDFromURL = function (url) {
@@ -749,6 +854,7 @@ if (typeof window !== 'undefined') {
   window.Zotero.ZotUpdate.wordfrequency = function () { zotupdate.wordfrequency() }
   window.Zotero.ZotUpdate.clearup = function () { zotupdate.clearup() }
   window.Zotero.ZotUpdate.pullDir = function () { zotupdate.pullDir() }
+  window.Zotero.ZotUpdate.weread = function () { zotupdate.weread() }
   window.Zotero.ZotUpdate.tryRead = function () { zotupdate.tryRead() }
   window.Zotero.ZotUpdate.eBook = function () { zotupdate.eBook() }
 }

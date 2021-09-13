@@ -3,5 +3,6 @@
 <!ENTITY zotero.zotupdate.wordfrequency.label "词频">
 <!ENTITY zotero.zotupdate.clearup.label "整理">
 <!ENTITY zotero.zotupdate.pulldir.label "拉目录">
+<!ENTITY zotero.zotupdate.weread.label "附加微信读书链接">
 <!ENTITY zotero.zotupdate.tryread.label "下载试读">
 <!ENTITY zotero.zotupdate.ebook.label "下载电子书">

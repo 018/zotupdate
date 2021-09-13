@@ -27,10 +27,12 @@
                     id="zotero-itemmenu-zotupdate-clearup"
                     label="&zotero.zotupdate.clearup.label;"
                     oncommand="Zotero.ZotUpdate.clearup()"/>
+                <menuseparator />
                 <menuitem
                     id="zotero-itemmenu-zotupdate-pulldir"
                     label="&zotero.zotupdate.pulldir.label;"
                     oncommand="Zotero.ZotUpdate.pullDir()"/>
+                <menuseparator />
                 <menuitem
                     id="zotero-itemmenu-zotupdate-tryread"
                     label="&zotero.zotupdate.tryread.label;"
@@ -39,6 +41,11 @@
                     id="zotero-itemmenu-zotupdate-ebook"
                     label="&zotero.zotupdate.ebook.label;"
                     oncommand="Zotero.ZotUpdate.eBook()"/>
+                <menuseparator />
+                <menuitem
+                    id="zotero-itemmenu-zotupdate-weread"
+                    label="&zotero.zotupdate.weread.label;"
+                    oncommand="Zotero.ZotUpdate.weread()"/>
             </menupopup>
         </menu>
     </popup>
