@@ -57,7 +57,7 @@ zotupdate.pullDir = function () {
           var img = doc.querySelector('.nbg').href
           this.newDir(window.ZoteroPane.getSelectedLibraryID(), zitem.getField('key'), img, dir)
           found = true
-          pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')))
+          pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')), `chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
         }
       }
 
@@ -97,7 +97,7 @@ zotupdate.pullDirByJD = function (isbn, zitem, pw, promises) {
             if (content) {
               var dir = content.innerHTML
               this.newDir(window.ZoteroPane.getSelectedLibraryID(), zitem.getField('key'), img, dir)
-              pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')) + '(JD)')
+              pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')) + '(JD)', `chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
             } else {
               this.pullDirByDangDang(isbn, zitem, pw, promises)
             }
@@ -160,7 +160,7 @@ zotupdate.pullDirByDangDang = function (isbn, zitem, pw, promises) {
                       dir += '<p><a href="' + href + '">点击查看全部</a></p>'
                       if (isDebug()) Zotero.debug('dir: ' + dir)
                       this.newDir(window.ZoteroPane.getSelectedLibraryID(), zitem.getField('key'), img, dir)
-                      pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')) + '(DangDang)')
+                      pw.addLines(this.getString('zotupdate.dir_found', zitem.getField('title')) + '(DangDang)', `chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
                     } else {
                       pw.addLines(this.getString('zotupdate.no_dir_found', zitem.getField('title')))
                     }
@@ -279,8 +279,13 @@ zotupdate.tryRead = function () {
 
   var pw = new Zotero.ProgressWindow()
   pw.changeHeadline(this.getString('zotupdate.title.tryread'))
-  pw.addDescription(this.getString('zotupdate.downloading'))
   pw.show()
+  
+  let itemProgress = new pw.ItemProgress(
+    `chrome://zotero/skin/spinner-16px${Zotero.hiDPISuffix}.png`,
+    `${zitem.getField('title')} ...`
+  )
+  itemProgress.setProgress(50)
 
   var promises = []
   if (isDebug()) Zotero.debug('isbn: ' + isbn)
@@ -321,11 +326,12 @@ zotupdate.tryRead = function () {
                 'contentType': 'application/pdf',
                 'title': '试读'
               })
-              pw.addDescription(this.getString('zotupdate.tryread_found', zitem.getField('title')))
-              pw.addDescription(this.getString('zotupdate.click_on_close'))
+              itemProgress.setIcon(`chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
+              itemProgress.setText(this.getString('zotupdate.tryread_found', zitem.getField('title')))
             }.bind(this)))
           } else {
-            pw.addDescription(this.getString('zotupdate.no_tryread_found', zitem.getField('title')) + '(2)')
+            itemProgress.setIcon(`chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+            itemProgress.setText(this.getString('zotupdate.no_tryread_found', zitem.getField('title')) + '(2)')
           }
         }.bind(this)))
       }
@@ -333,9 +339,11 @@ zotupdate.tryRead = function () {
   }.bind(this)))
 
   Promise.all(promises).then((result) => {
-    pw.addDescription(this.getString('zotupdate.click_on_close'))
   }).catch((error) => {
-    pw.addLines(error)
+    itemProgress.setIcon(`chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+    itemProgress.setText(error)
+  }).finally(() => {
+    itemProgress.setProgress(100)
     pw.addDescription(this.getString('zotupdate.click_on_close'))
   })
 }
@@ -368,8 +376,13 @@ zotupdate.eBook = function () {
 
   var pw = new Zotero.ProgressWindow()
   pw.changeHeadline(this.getString('zotupdate.title.ebook'))
-  pw.addDescription(this.getString('zotupdate.downloading'))
   pw.show()
+
+  let itemProgress = new pw.ItemProgress(
+    `chrome://zotero/skin/spinner-16px${Zotero.hiDPISuffix}.png`,
+    `${zitem.getField('title')} ...`
+  )
+  itemProgress.setProgress(50)
 
   if (isDebug()) Zotero.debug('isbn: ' + isbn)
   Zotero.HTTP.processDocuments('https://b-ok.global/s/' + isbn, function (doc) {
@@ -395,18 +408,22 @@ zotupdate.eBook = function () {
               'contentType': 'application/pdf',
               'title': this.getString('zotupdate.ebook') + '(' + title + ')'
             })
-            pw.addDescription(this.getString('zotupdate.ebook_found', zitem.getField('title'), txt))
-            pw.addDescription(this.getString('zotupdate.click_on_close'))
+            itemProgress.setIcon(`chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
+            itemProgress.setText(this.getString('zotupdate.ebook_found', zitem.getField('title'), txt))
           } else {
-            pw.addDescription(this.getString('zotupdate.no_ebook_found', zitem.getField('title')) + '(1)')
-            pw.addDescription(this.getString('zotupdate.click_on_close'))
+            itemProgress.setIcon(`chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+            itemProgress.setText(this.getString('zotupdate.no_ebook_found', zitem.getField('title')) + '(1)')
           }
+          itemProgress.setProgress(100)
+          pw.addDescription(this.getString('zotupdate.click_on_close'))
         }.bind(this))
       }
     }
 
     if (!found) {
-      pw.addDescription(this.getString('zotupdate.no_ebook_found', zitem.getField('title')) + '(2)')
+      itemProgress.setIcon(`chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+      itemProgress.setText(this.getString('zotupdate.no_ebook_found', zitem.getField('title')) + '(2)')
+      itemProgress.setProgress(100)
       pw.addDescription(this.getString('zotupdate.click_on_close'))
     }
   }.bind(this))
@@ -424,7 +441,7 @@ zotupdate.updateRating = function (zitem, pw, url, promises) {
             ratingPeople = 0
           }
           var txt = rating + '/' + ratingPeople
-          pw.addLines(this.getString('zotupdate.score_found', zitem.getField('title'), txt))
+          pw.addLines(this.getString('zotupdate.score_found', zitem.getField('title'), txt), `chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
           zitem.setField('extra', txt)
           zitem.saveTx()
         } else {
@@ -443,7 +460,7 @@ zotupdate.updateRating = function (zitem, pw, url, promises) {
       if (res.status === 200) {
         Zotero.debug(res.responseText.replace(/'/g, '"'))
         var json = JSON.parse(res.responseText.replace(/'/g, '"'))
-        pw.addLines(this.getString('zotupdate.quote_found', zitem.getField('title'), json.CITING))
+        pw.addLines(this.getString('zotupdate.quote_found', zitem.getField('title'), json.CITING), `chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
         zitem.setField('extra', json.CITING)
         zitem.saveTx()
       } else {
@@ -533,7 +550,7 @@ zotupdate.updateInfo = function () {
               let clc = this.opt(this.opt(/【中图法分类号】.*\n/.exec(tubox)).match(/[a-zA-Z0-9\.;]+/))
               if (clc) {
                 if (isDebug()) Zotero.debug('clc: ' + clc)
-                pw.addLines(this.getString('zotupdate.clc_found', zitem.getField('title'), clc))
+                pw.addLines(this.getString('zotupdate.clc_found', zitem.getField('title'), clc), `chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
                 zitem.setField('archiveLocation', clc)
                 zitem.saveTx()
               } else {
@@ -585,7 +602,7 @@ zotupdate.clearup = function() {
     Zotero.debug(_title + ' >>> ' + title)
     zitem.setField('title', _title)
     if (title !== _title) {
-      pw.addLines(title + ' >>> ' + _title, title)
+      pw.addLines(title + ' >>> ' + _title, `chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
     }
 
     var abstractNote = (zitem.getField('abstractNote') || '').replace(/•/g, '·')
@@ -620,7 +637,7 @@ zotupdate.clearup = function() {
           .replace(/\. */g, '.')
           .replace(/(.*)\[(.*)\]/g, '[$2]$1')
         if (creator.lastName !== lastName) {
-          pw.addLines(creator.lastName + ' >>> ' + lastName, zitem.getField('title'))
+          pw.addLines(creator.lastName + ' >>> ' + lastName, zitem.getField('title'), `chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
         }
         creator.lastName = lastName
       }
@@ -656,19 +673,44 @@ zotupdate.weread = function () {
   var pw = new Zotero.ProgressWindow()
   pw.changeHeadline('附加微信读书链接')
   pw.show()
+  let itemProgress = new pw.ItemProgress(
+    `chrome://zotero/skin/spinner-16px${Zotero.hiDPISuffix}.png`,
+    `${zitem.getField('title')} ...`
+  )
+  itemProgress.setProgress(50)
 
   Zotero.HTTP.doGet('https://weread.qq.com/web/search/global?keyword=' + zitem.getField('title') + '&maxIdx=0&fragmentSize=120&count=40', async function (request) {
     if (request.status === 200 || request.status === 201) {
       let res = JSON.parse(request.responseText)
       if (res.books && res.books.length > 0) {
         let bookId
+        let paring = function (val) {
+          return val.replace(/（/g, '')
+            .replace(/）/g, '')
+            .replace(/【|﹝|〔/g, '')
+            .replace(/】|﹞|〕/g, '')
+            .replace(/ *编|著|译|等|校/g, '')
+            .replace(/翻译/g, '')
+            .replace(/\(审校\)/g, '')
+            .replace(/译校/g, '')
+            .replace(/编译/g, '')
+            .replace(/正校/g, '')
+            .replace(/•|・|▪/g, '')
+            .replace(/\] +/g, '')
+            .replace(/ *· */g, '')
+            .replace(/ /g, '')
+            .replace(/．/g, '')
+            .replace(/\. */g, '.')
+        }
         for (let index = 0; index < res.books.length; index++) {
           const book = res.books[index]
 
           var creators = zitem.getCreators()
           if (creators) {
             for (const creator of creators) {
-              if (creator.lastName === book.bookInfo.author) {
+              let author = paring(book.bookInfo.author)
+              let lastName = paring(creator.lastName || '')
+              if (lastName && (lastName.startsWith(author) || lastName.endsWith(author) || author.startsWith(lastName) || author.endsWith(lastName))) {
                 bookId = book.bookInfo.bookId
                 break
               }
@@ -690,19 +732,26 @@ zotupdate.weread = function () {
             url: url
           })
           Zotero.debug(`找到微信读书: ${url}`)
-          pw.addLines(`${zitem.getField('title')} 找到微信读书。`, `chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
+          itemProgress.setIcon(`chrome://zotero/skin/tick${Zotero.hiDPISuffix}.png`)
+          itemProgress.setText(`${zitem.getField('title')} 找到微信读书。`)
         } else {
-          pw.addLines(`${zitem.getField('title')} 未找到微信读书。`, `chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+          itemProgress.setIcon(`chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+          itemProgress.setText(`${zitem.getField('title')} 未找到微信读书。`)
         }
       } else {
-        pw.addLines(`${zitem.getField('title')} 未找到微信读书。`, `chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+        itemProgress.setIcon(`chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+        itemProgress.setText(`${zitem.getField('title')} 未找到微信读书。`)
       }
     } else if (request.status === 0) {
-      pw.addLines(`${zitem.getField('title')} 出错 - 网络错误。`, `chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+      itemProgress.setIcon(`chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+      itemProgress.setText(`${zitem.getField('title')} 出错 - 网络错误。`)
     } else {
-      pw.addLines(`${zitem.getField('title')} 出错，${request.status} - ${request.statusText}`, `chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+      itemProgress.setIcon(`chrome://zotero/skin/cross${Zotero.hiDPISuffix}.png`)
+      itemProgress.setText(`${zitem.getField('title')} 出错，${request.status} - ${request.statusText}`)
     }
+    itemProgress.setProgress(100)
   }.bind(this))
+  pw.addDescription(this.getString('zotupdate.click_on_close'))
 }
 
 zotupdate.createId = function (bookId) {
